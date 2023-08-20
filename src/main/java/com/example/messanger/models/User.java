@@ -23,8 +23,8 @@ import java.util.Set;
 @Builder
 public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
     @NotBlank
     @Size(max = 20)
@@ -39,5 +39,13 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    @OneToMany(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chat_id", referencedColumnName = "id")
+    private Set<Chat> chats;
+
+    @OneToMany(fetch = FetchType.LAZY)
+    @JoinColumn(name = "message_id", referencedColumnName = "id")
+    private Set<Message> user;
 
 }
