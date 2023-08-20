@@ -34,4 +34,9 @@ public class AuthenticationController {
             return ResponseEntity.ok(new MessageResponse(EStatus.FAILURE, "User already exists"));
         }
     }
+
+    @GetMapping("/logout")
+    public ResponseEntity<?> logout() {
+        return ResponseEntity.ok(new MessageResponse(EStatus.SUCCESS, ""));
+    }
 }

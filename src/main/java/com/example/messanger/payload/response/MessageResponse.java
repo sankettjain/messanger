@@ -8,9 +8,9 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class MessageResponse {
+public class MessageResponse<T> {
     private EStatus status;
-    private String message;
+    private T message;
 
 
 }
