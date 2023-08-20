@@ -11,6 +11,12 @@ import lombok.NoArgsConstructor;
 public class MessageResponse<T> {
     private EStatus status;
     private T message;
+    private Object data;
+
+    public MessageResponse(EStatus status, T message){
+        this.status = status;
+        this.message = message;
+    }
 
 
 }

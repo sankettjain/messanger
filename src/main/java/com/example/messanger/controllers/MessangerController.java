@@ -16,29 +16,29 @@ public class MessangerController {
     private MessengerService messengerService;
 
     @GetMapping("/get/users")
-//    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public MessageResponse getUsers() {
         return messengerService.getUsers();
     }
 
-    @GetMapping("/get/unread")
-//    @PreAuthorize("hasRole('USER')")
-    public String getUnread() {
-        return "";
+    @GetMapping("/get/unread/{userName}")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public MessageResponse getUnread(@PathVariable String userName) throws Exception {
+        return messengerService.getUnreadMessages(userName);
     }
 
     @PostMapping("/send/text/user")
-//    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public MessageResponse sendTextToUser(@RequestBody SendTextUserRequest sendTextUserRequest) throws Exception {
 
         return messengerService.sendMessage(sendTextUserRequest);
     }
 
-    @GetMapping("/get/history/{chatId}")
-//    @PreAuthorize("hasRole('USER')")
-    public MessageResponse getHistory(@PathVariable Long chatId) {
+    @GetMapping("/get/history/{chatId}/{fromUserName}")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public MessageResponse getHistory(@PathVariable Long chatId, @PathVariable String fromUserName) throws Exception {
 
-        return messengerService.getHistory(chatId);
+        return messengerService.getHistory(chatId, fromUserName);
     }
 
 }

@@ -7,9 +7,9 @@ public interface MessengerService {
 
     MessageResponse getUsers();
 
-    MessageResponse getUnreadMessages();
+    MessageResponse getUnreadMessages(String userName) throws Exception;
 
     MessageResponse sendMessage(SendTextUserRequest sendTextUserRequest) throws Exception;
 
-    MessageResponse getHistory(Long chatId);
+    MessageResponse getHistory(Long chatId, String fromUserName) throws Exception;
 }

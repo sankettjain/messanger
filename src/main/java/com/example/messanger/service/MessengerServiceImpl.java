@@ -1,28 +1,20 @@
 package com.example.messanger.service;
 
-import com.example.messanger.models.Chat;
-import com.example.messanger.models.ChatParticipants;
-import com.example.messanger.models.Message;
-import com.example.messanger.models.User;
+import com.example.messanger.models.*;
 import com.example.messanger.payload.enums.ChatType;
 import com.example.messanger.payload.enums.EStatus;
 import com.example.messanger.payload.request.SendTextUserRequest;
 import com.example.messanger.payload.response.ChatHistoryResponse;
 import com.example.messanger.payload.response.MessageResponse;
-import com.example.messanger.repository.ChatParticipantsRepository;
-import com.example.messanger.repository.ChatRepository;
-import com.example.messanger.repository.MessageRepository;
-import com.example.messanger.repository.UserRepository;
+import com.example.messanger.repository.*;
 import com.google.gson.Gson;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +32,9 @@ public class MessengerServiceImpl implements MessengerService {
     @Autowired
     private MessageRepository messageRepository;
 
+    @Autowired
+    private ChatReadByRepository chatReadByRepository;
+
     @Override
     public MessageResponse getUsers() {
 
@@ -50,12 +45,36 @@ public class MessengerServiceImpl implements MessengerService {
             userName = userList.stream().map(p -> p.getUsername()).collect(Collectors.toList());
         }
 
-        return new MessageResponse(EStatus.SUCCESS, new Gson().toJson(userName));
+        return new MessageResponse(EStatus.SUCCESS, userName);
     }
 
     @Override
-    public MessageResponse getUnreadMessages() {
-        return null;
+    public MessageResponse getUnreadMessages(String userName) throws Exception {
+
+
+        User user = userRepository.findByUsername(userName).orElseThrow(() -> new Exception("User not found with userName " + userName));
+        List<ChatReadBy> chatReadBIES = chatReadByRepository.getChatByUserAndStatus(user.getId(), false);
+        Map<Long, List<String>> chatToMessages = new HashMap<>();
+        if (!CollectionUtils.isEmpty(chatReadBIES)) {
+            for (ChatReadBy chatReadBy : chatReadBIES) {
+
+                Message message = chatReadBy.getMessage();
+                Long chatId = message.getChat().getId();
+                if (chatToMessages.containsKey(chatId)) {
+                    List<String> tempMessageList = chatToMessages.get(chatId);
+                    tempMessageList.add(message.getText());
+                    chatToMessages.put(chatId, tempMessageList);
+                } else {
+                    chatToMessages.put(chatId, Arrays.asList(message.getText()));
+                }
+
+
+            }
+        }
+        if (chatToMessages.size() > 0) {
+            return new MessageResponse(EStatus.SUCCESS, "You have message(s)", chatToMessages);
+        }
+        return new MessageResponse(EStatus.SUCCESS, "No new Messages");
     }
 
     @Override
@@ -77,6 +96,10 @@ public class MessengerServiceImpl implements MessengerService {
                     chat(chatEntry).user(fromUser).text(sendTextUserRequest.getText()).build();
             messageRepository.save(message);
 
+            ChatReadBy chatReadBy = ChatReadBy.builder().
+                    message(message).user(toUser).isRead(false).build();
+            chatReadByRepository.save(chatReadBy);
+
             ChatParticipants fromChatParticipant = ChatParticipants.builder().
                     chat(chatEntry).user(fromUser).
                     build();
@@ -95,21 +118,37 @@ public class MessengerServiceImpl implements MessengerService {
             Message message = Message.builder().
                     chat(chatEntry).user(fromUser).text(sendTextUserRequest.getText()).build();
             messageRepository.save(message);
+
+            ChatReadBy chatReadBy = ChatReadBy.builder().
+                    message(message).user(toUser).isRead(false).build();
+            chatReadByRepository.save(chatReadBy);
         }
         return new MessageResponse(EStatus.SUCCESS, "");
     }
 
     @Override
-    public MessageResponse getHistory(Long chatId) {
+    public MessageResponse getHistory(Long chatId, String fromUserName) throws Exception {
 
+        User user = userRepository.findByUsername(fromUserName).orElseThrow(() -> new Exception("fromUserNotFound"));
         List<Message> messages = messageRepository.findByChatIdOrderByCreatedAtDesc(chatId);
-        List<ChatHistoryResponse> chatHistoryResponses= new ArrayList<>();
-        if(!CollectionUtils.isEmpty(messages)){
-            for(Message message:messages){
-                chatHistoryResponses.add(new ChatHistoryResponse(message.getUser().getUsername(),message.getText()));
+        List<ChatHistoryResponse> chatHistoryResponses = new ArrayList<>();
+        List<Long> messageId = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(messages)) {
+            for (Message message : messages) {
+                messageId.add(message.getId());
+                chatHistoryResponses.add(new ChatHistoryResponse(message.getUser().getUsername(), message.getText()));
             }
         }
-        MessageResponse<List<ChatHistoryResponse>> messageResponse = new MessageResponse<>(EStatus.SUCCESS,chatHistoryResponses);
+        if (!CollectionUtils.isEmpty(messageId)) {
+            List<ChatReadBy> chatReadBIES = chatReadByRepository.getChatReadByMessageAndUser(messageId, user.getId());
+            if (!CollectionUtils.isEmpty(chatReadBIES)) {
+                for(ChatReadBy chatReadBy:chatReadBIES) {
+                    chatReadBy.setIsRead(true);
+                    chatReadByRepository.save(chatReadBy);
+                }
+            }
+        }
+        MessageResponse<List<ChatHistoryResponse>> messageResponse = new MessageResponse<>(EStatus.SUCCESS, chatHistoryResponses);
         return messageResponse;
     }
 }
